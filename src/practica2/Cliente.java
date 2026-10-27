@@ -15,7 +15,7 @@ public class Cliente {
 
         // =========================================================================
         // HILO SECUNDARIO (RECEPTOR DE BROADCAST)
-        // Se ejecuta en paralelo para escuchar de forma continua los datos que 
+        // Se ejecuta en paralelo para escuchar de forma continua los datos que
         // envian todos los servidores sin bloquear la consola principal.
         // =========================================================================
         Thread hiloReceptor = new Thread(() -> {
@@ -25,18 +25,18 @@ public class Cliente {
                 socketEscucha.setReuseAddress(true);
                 // Vinculamos al puerto broadcast (permite abrir multiples clientes a la vez)
                 socketEscucha.bind(new InetSocketAddress(puertoBroadcast));
-                
-                byte[] buffer = new byte[1024];
+
+                byte[] buffer = new byte[8192];
 
                 while (true) {
                     DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
                     socketEscucha.receive(paquete); // Bloqueante hasta que llega una trama UDP
-                    
+
                     String datos = new String(paquete.getData(), 0, paquete.getLength());
                     System.out.println("\n[DATOS] " + datos);
                 }
             } catch (Exception e) {
-                // Silenciamos errores menores de escucha del hilo secundario
+                System.out.println("[ERROR] Receptor de broadcast: " + e.getMessage());
             }
         });
         hiloReceptor.setDaemon(true); // Permite que el hilo muera automaticamente al cerrar el cliente
@@ -47,14 +47,14 @@ public class Cliente {
         // Gestiona la interaccion con el usuario por consola y el envio unicast.
         // =========================================================================
         Scanner scanner = new Scanner(System.in);
-        
+
         while (true) {
             try {
                 System.out.println("\n==================================");
                 System.out.println("     PANEL DE CONTROL CLIENTE     ");
                 System.out.println("==================================");
                 System.out.print("Introduce el ID del servidor al que quieres mandar la orden (ej: 1, 2, 3...): ");
-                
+
                 int idServidor = scanner.nextInt();
                 int puertoDestinoControl = 6000 + idServidor; // Calculo del puerto unicast por ID
 
@@ -62,22 +62,25 @@ public class Cliente {
 
                 // =========================================================================
                 // MECANISMO DE VERIFICACION (PING RAPIDO CON TIMEOUT):
-                // En lugar de asumir que el servidor existe, enviamos un paquete ligero ("PING")
-                // al puerto de control especifico. Si responde, esta activo. Si no, salta la 
+                // En lugar de asumir que el servidor existe, enviamos un paquete ligero
+                // ("PING")
+                // al puerto de control especifico. Si responde, esta activo. Si no, salta la
                 // excepcion y evitamos abrir el menu para un servidor apagado o inexistente.
                 // =========================================================================
                 try (DatagramSocket socketCheck = new DatagramSocket()) {
                     byte[] bufferCheck = "PING".getBytes();
                     InetAddress ipDestino = InetAddress.getByName("127.0.0.1");
-                    DatagramPacket paqueteCheck = new DatagramPacket(bufferCheck, bufferCheck.length, ipDestino, puertoDestinoControl);
+                    DatagramPacket paqueteCheck = new DatagramPacket(bufferCheck, bufferCheck.length, ipDestino,
+                            puertoDestinoControl);
                     socketCheck.send(paqueteCheck);
 
                     socketCheck.setSoTimeout(1500); // 1.5 segundos de margen maximo de respuesta
                     byte[] bufferResp = new byte[1024];
                     DatagramPacket paqueteResp = new DatagramPacket(bufferResp, bufferResp.length);
-                    socketCheck.receive(paqueteResp); 
+                    socketCheck.receive(paqueteResp);
                 } catch (java.net.SocketTimeoutException e) {
-                    System.out.println("\n[AVISO] El Servidor " + idServidor + " no esta activo o no existe. Imposible mandar ordenes.");
+                    System.out.println("\n[AVISO] El Servidor " + idServidor
+                            + " no esta activo o no existe. Imposible mandar ordenes.");
                     continue; // Vuelve arriba al menu principal de forma limpia
                 }
 
@@ -91,7 +94,7 @@ public class Cliente {
                 System.out.println("3. Cambiar unidades de una variable");
                 System.out.println("4. Activar / Desactivar envio de datos");
                 System.out.print("Selecciona una accion (1-4): ");
-                
+
                 int accion = scanner.nextInt();
                 scanner.nextLine(); // Limpiar el salto de linea pendiente
 
@@ -130,15 +133,17 @@ public class Cliente {
                     byte[] bufferEnvio = comandoConstruido.getBytes();
                     InetAddress ipDestino = InetAddress.getByName("127.0.0.1");
 
-                    DatagramPacket paqueteControl = new DatagramPacket(bufferEnvio, bufferEnvio.length, ipDestino, puertoDestinoControl);
+                    DatagramPacket paqueteControl = new DatagramPacket(bufferEnvio, bufferEnvio.length, ipDestino,
+                            puertoDestinoControl);
                     socketEnvio.send(paqueteControl);
-                    System.out.println("-> Comando enviado al Servidor " + idServidor + " (Puerto " + puertoDestinoControl + ")");
+                    System.out.println(
+                            "-> Comando enviado al Servidor " + idServidor + " (Puerto " + puertoDestinoControl + ")");
 
                     // Espera de la respuesta exclusiva del servidor (ACK)
                     socketEnvio.setSoTimeout(3000);
                     byte[] bufferRespuesta = new byte[1024];
                     DatagramPacket paqueteRespuesta = new DatagramPacket(bufferRespuesta, bufferRespuesta.length);
-                    
+
                     socketEnvio.receive(paqueteRespuesta);
                     String respuestaServidor = new String(paqueteRespuesta.getData(), 0, paqueteRespuesta.getLength());
                     System.out.println("[RESPUESTA] " + respuestaServidor);
@@ -148,10 +153,11 @@ public class Cliente {
                 }
 
             } catch (Exception e) {
-                // Control general de errores: Si se introduce una letra por error o se cruza texto,
+                // Control general de errores: Si se introduce una letra por error o se cruza
+                // texto,
                 // vaciamos por completo el buffer del scanner para evitar bucles infinitos.
                 System.out.println("\n[ERROR] Entrada no valida o error inesperado. Vuelve a intentarlo.");
-                scanner.nextLine(); 
+                scanner.nextLine();
             }
         }
     }

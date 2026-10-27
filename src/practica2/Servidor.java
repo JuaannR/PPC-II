@@ -4,8 +4,36 @@ import java.net.BindException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Random;
 
 public class Servidor {
+
+    private static volatile long periodoMs = 5000;
+    private static final Random RND = new Random();
+
+    private static double aleatorio(double min, double max) {
+        return Math.round((min + RND.nextDouble() * (max - min)) * 100.0) / 100.0;
+    }
+
+    private static MensajeDistribucion generarMensaje(int id) {
+        MensajeDistribucion m = new MensajeDistribucion(id, System.currentTimeMillis());
+        m.addMedicion(new Medicion("Temp", "C", aleatorio(-5, 40)));
+        switch (id) {
+            case 1:
+                m.addMedicion(new Medicion("Hum", "%", aleatorio(10, 100)));
+                m.addMedicion(new Medicion("PM10", "ug/m3", aleatorio(0, 150)));
+                break;
+            case 2:
+                m.addMedicion(new Medicion("SO2", "ug/m3", aleatorio(0, 350)));
+                m.addMedicion(new Medicion("NO2", "ug/m3", aleatorio(0, 200)));
+                break;
+            default:
+                m.addMedicion(new Medicion("O3", "ug/m3", aleatorio(0, 240)));
+                m.addMedicion(new Medicion("Presion", "hPa", aleatorio(980, 1040)));
+        }
+        return m;
+    }
+
     public static void main(String[] args) {
         if (args.length != 1) {
             System.out.println("Error: Debes indicar el ID del servidor.");
@@ -24,19 +52,20 @@ public class Servidor {
         Thread hiloBroadcast = new Thread(() -> {
             try (DatagramSocket socketBroadcast = new DatagramSocket()) {
                 socketBroadcast.setBroadcast(true);
-                
+
                 while (true) {
-                    String tramaDatos = "[Servidor " + id + "] - Temp: 22.5 C | Hum: 55 | SO2: 10";
+                    String tramaDatos = generarMensaje(id).toString();
                     byte[] buffer = tramaDatos.getBytes();
-                    
+
                     InetAddress direccionBroadcast = InetAddress.getByName("255.255.255.255");
-                    DatagramPacket paquete = new DatagramPacket(buffer, buffer.length, direccionBroadcast, puertoBroadcast);
-                    
+                    DatagramPacket paquete = new DatagramPacket(buffer, buffer.length, direccionBroadcast,
+                            puertoBroadcast);
+
                     socketBroadcast.send(paquete);
-                    Thread.sleep(5000); // 5 segundos de frecuencia
+                    Thread.sleep(periodoMs); // 5 segundos de frecuencia
                 }
             } catch (Exception e) {
-                // Hilo secundario
+                System.out.println("[ERROR] Hilo Broadcast: " + e.getMessage());
             }
         });
         hiloBroadcast.setDaemon(true);
@@ -45,7 +74,7 @@ public class Servidor {
         // HILO PRINCIPAL: Apertura del puerto de control
         try (DatagramSocket socketControl = new DatagramSocket(puertoControl)) {
             System.out.println("-> Servidor " + id + " arrancado con exito!");
-            byte[] bufferRecepcion = new byte[1024];
+            byte[] bufferRecepcion = new byte[4096];
 
             while (true) {
                 DatagramPacket paqueteRecibido = new DatagramPacket(bufferRecepcion, bufferRecepcion.length);
@@ -53,15 +82,24 @@ public class Servidor {
 
                 InetAddress ipCliente = paqueteRecibido.getAddress();
                 int puertoCliente = paqueteRecibido.getPort();
-                
-                String mensajeControl = new String(paqueteRecibido.getData(), 0, paqueteRecibido.getLength());
-                System.out.println("\n[CONTROL RECIBIDO] De cliente " + ipCliente.getHostAddress() + ":" + puertoCliente);
-                System.out.println("-> Orden: " + mensajeControl);
 
-                String respuestaTexto = "ACK: Servidor " + id + " ha procesado tu orden correctamente.";
+                String mensajeControl = new String(paqueteRecibido.getData(), 0, paqueteRecibido.getLength());
+
+                String respuestaTexto;
+
+                if (mensajeControl.equals("PING")) {
+                    respuestaTexto = "PONG";
+                } else {
+                    System.out.println(
+                            "\n[CONTROL RECIBIDO] De cliente " + ipCliente.getHostAddress() + ":" + puertoCliente);
+                    System.out.println("-> Orden: " + mensajeControl);
+                    respuestaTexto = "ACK: Servidor " + id + " ha procesado tu orden correctamente.";
+                }
+
                 byte[] bufferRespuesta = respuestaTexto.getBytes();
 
-                DatagramPacket paqueteRespuesta = new DatagramPacket(bufferRespuesta, bufferRespuesta.length, ipCliente, puertoCliente);
+                DatagramPacket paqueteRespuesta = new DatagramPacket(bufferRespuesta, bufferRespuesta.length, ipCliente,
+                        puertoCliente);
                 socketControl.send(paqueteRespuesta);
                 System.out.println("-> Respuesta unicast enviada al cliente.");
             }
