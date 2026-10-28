@@ -54,8 +54,8 @@ public class Servidor {
                 socketBroadcast.setBroadcast(true);
 
                 while (true) {
-                    String tramaDatos = generarMensaje(id).toString();
-                    byte[] buffer = tramaDatos.getBytes();
+                    MensajeDistribucion mensaje = generarMensaje(id);
+                    byte[] buffer = new Trama("JSON", "DISTRIBUCION", JsonSerializador.serializar(mensaje)).codificar();
 
                     InetAddress direccionBroadcast = InetAddress.getByName("255.255.255.255");
                     DatagramPacket paquete = new DatagramPacket(buffer, buffer.length, direccionBroadcast,

@@ -1,0 +1,13 @@
+{"idServidor":7,"timestamp":1793182326159,"mediciones":[{"nombre":"Temp","unidad":"C","valor":11.66},{"nombre":"O3","unidad":"ug/m3","valor":190.94},{"nombre":"Presion","unidad":"hPa","valor":990.09}]}
+{"idServidor":7,"timestamp":1793182331218,"mediciones":[{"nombre":"Temp","unidad":"C","valor":23.2},{"nombre":"O3","unidad":"ug/m3","valor":131.92},{"nombre":"Presion","unidad":"hPa","valor":980.59}]}
+{"idServidor":7,"timestamp":1793182336222,"mediciones":[{"nombre":"Temp","unidad":"C","valor":0.17},{"nombre":"O3","unidad":"ug/m3","valor":75.18},{"nombre":"Presion","unidad":"hPa","valor":1020.68}]}
+{"idServidor":7,"timestamp":1793182341237,"mediciones":[{"nombre":"Temp","unidad":"C","valor":24.52},{"nombre":"O3","unidad":"ug/m3","valor":198.65},{"nombre":"Presion","unidad":"hPa","valor":1020.45}]}
+{"idServidor":7,"timestamp":1793182341237,"mediciones":[{"nombre":"Temp","unidad":"C","valor":24.52},{"nombre":"O3","unidad":"ug/m3","valor":198.65},{"nombre":"Presion","unidad":"hPa","valor":1020.45}]}
+{"idServidor":7,"timestamp":1793182346251,"mediciones":[{"nombre":"Temp","unidad":"C","valor":17.8},{"nombre":"O3","unidad":"ug/m3","valor":50.34},{"nombre":"Presion","unidad":"hPa","valor":992.38}]}
+{"idServidor":7,"timestamp":1793182346251,"mediciones":[{"nombre":"Temp","unidad":"C","valor":17.8},{"nombre":"O3","unidad":"ug/m3","valor":50.34},{"nombre":"Presion","unidad":"hPa","valor":992.38}]}
+{"idServidor":7,"timestamp":1793182351261,"mediciones":[{"nombre":"Temp","unidad":"C","valor":21.1},{"nombre":"O3","unidad":"ug/m3","valor":237.73},{"nombre":"Presion","unidad":"hPa","valor":1012.66}]}
+{"idServidor":7,"timestamp":1793182351261,"mediciones":[{"nombre":"Temp","unidad":"C","valor":21.1},{"nombre":"O3","unidad":"ug/m3","valor":237.73},{"nombre":"Presion","unidad":"hPa","valor":1012.66}]}
+{"idServidor":7,"timestamp":1793182356270,"mediciones":[{"nombre":"Temp","unidad":"C","valor":38.2},{"nombre":"O3","unidad":"ug/m3","valor":128.16},{"nombre":"Presion","unidad":"hPa","valor":1004.4}]}
+{"idServidor":7,"timestamp":1793182356270,"mediciones":[{"nombre":"Temp","unidad":"C","valor":38.2},{"nombre":"O3","unidad":"ug/m3","valor":128.16},{"nombre":"Presion","unidad":"hPa","valor":1004.4}]}
+{"idServidor":7,"timestamp":1793182361279,"mediciones":[{"nombre":"Temp","unidad":"C","valor":9.92},{"nombre":"O3","unidad":"ug/m3","valor":57.12},{"nombre":"Presion","unidad":"hPa","valor":1039.39}]}
+{"idServidor":7,"timestamp":1793182361279,"mediciones":[{"nombre":"Temp","unidad":"C","valor":9.92},{"nombre":"O3","unidad":"ug/m3","valor":57.12},{"nombre":"Presion","unidad":"hPa","valor":1039.39}]}

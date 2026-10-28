@@ -32,8 +32,21 @@ public class Cliente {
                     DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
                     socketEscucha.receive(paquete); // Bloqueante hasta que llega una trama UDP
 
-                    String datos = new String(paquete.getData(), 0, paquete.getLength());
-                    System.out.println("\n[DATOS] " + datos);
+                    try {
+                        Trama t = Trama.decodificar(paquete.getData(), paquete.getLength());
+                        
+                        if (t.getFormato().equals("JSON")) {
+                        MensajeDistribucion m = JsonSerializador.deserializar(t.getCuerpo());
+                        Archivos.anadir("Servidor" + m.getIdServidor(), "mediciones.txt", t.getCuerpo());
+                        System.out.println("\n[DATOS JSON] " + m);
+                        } else {
+                            System.out.println("\n[DATOS " + t.getFormato() + "] formato aun no soportado");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("[ERROR] Trama no valida " + e.getMessage());
+                    }
+
+
                 }
             } catch (Exception e) {
                 System.out.println("[ERROR] Receptor de broadcast: " + e.getMessage());
