@@ -2,11 +2,27 @@ package practica2;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
+import java.net.InetAddress;
+import java.util.List;
 
 public class Cliente {
+
+    // Lo que el cliente sabe de cada servidor por las tramas que va recibiendo
+    private static final Map<Integer, String> formatos = new ConcurrentHashMap<>();
+    private static final Map<Integer, MensajeDistribucion> ultimo = new ConcurrentHashMap<>();
+
+    private static int leerOpcion(Scanner sc) {
+        try {
+            return Integer.parseInt(sc.nextLine().trim());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
     public static void main(String[] args) {
         // Puerto fijo comun de broadcast definido en la practica (5000)
         int puertoBroadcast = 5000;
@@ -45,6 +61,8 @@ public class Cliente {
                             continue;
                         }
 
+                        formatos.put(m.getIdServidor(), t.getFormato());
+                        ultimo.put(m.getIdServidor(), m);
                         System.out.println("\n[DATOS " + t.getFormato() + "] " + m);
                         Archivos.anadir("Servidor" + m.getIdServidor(), "mediciones.txt",
                                 t.getCuerpo().trim() + System.lineSeparator());
@@ -121,9 +139,16 @@ public class Cliente {
 
                 switch (accion) {
                     case 1:
-                        System.out.print("Introduce el nuevo formato (XML o JSON): ");
                         operacion = "FORMATO";
-                        parametro = scanner.nextLine();
+                        String actual = formatos.get(idServidor);
+                        if (actual != null) {
+                            parametro = actual.equals("JSON") ? "XML" : "JSON";
+                            System.out.println("Formato actual del servidor " + idServidor + ": " + actual
+                                    + " -> se cambia a " + parametro);
+                        } else {
+                            System.out.print("Formato actual desconocido. Introduce el nuevo formato (XML o JSON): ");
+                            parametro = scanner.nextLine();
+                        }
                         break;
                     case 2:
                         System.out.print("Introduce la nueva frecuencia en segundos: ");
@@ -131,9 +156,44 @@ public class Cliente {
                         parametro = scanner.nextLine();
                         break;
                     case 3:
-                        System.out.print("Introduce variable y nuevas unidades (ej: Temp:Fahrenheit): ");
-                        operacion = "UNIDADES";
-                        parametro = scanner.nextLine();
+                        MensajeDistribucion ultimoMensaje = ultimo.get(idServidor);
+                            if (ultimoMensaje == null) {
+                                System.out.println("[AVISO] Aun no se han recibido datos del servidor " + idServidor
+                                        + ". Espera a que llegue alguna trama.");
+                                continue;
+                            }
+                            List<Medicion> meds = ultimoMensaje.getMediciones();
+                            System.out.println("Variables del servidor " + idServidor + ":");
+                            for (int i = 0; i < meds.size(); i++) {
+                                System.out.println("  " + (i + 1) + ". " + meds.get(i).getNombre()
+                                        + " (" + meds.get(i).getUnidad() + ")");
+                            }
+                            System.out.print("Elige variable: ");
+                            int v = leerOpcion(scanner);
+                            if (v < 1 || v > meds.size()) {
+                                System.out.println("[!] Variable no valida. Cancelando.");
+                                continue;
+                            }
+                            Medicion elegida = meds.get(v - 1);
+
+                            List<String> unidades = Unidades.compatibles(elegida.getUnidad());
+                            if (unidades.size() < 2) {
+                                System.out.println("[AVISO] " + elegida.getNombre() + " solo admite " + elegida.getUnidad() + ".");
+                                continue;
+                            }
+                            System.out.println("Unidades disponibles para " + elegida.getNombre() + ":");
+                            for (int i = 0; i < unidades.size(); i++) {
+                                System.out.println("  " + (i + 1) + ". " + unidades.get(i)
+                                        + (unidades.get(i).equals(elegida.getUnidad()) ? " (actual)" : ""));
+                            }
+                            System.out.print("Elige unidad: ");
+                            int u = leerOpcion(scanner);
+                            if (u < 1 || u > unidades.size()) {
+                                System.out.println("[!] Unidad no valida. Cancelando.");
+                                continue;
+                            }
+                            operacion = "UNIDADES";
+                            parametro = elegida.getNombre() + ":" + unidades.get(u - 1);
                         break;
                     case 4:
                         System.out.print("¿Activar (ON) o Desactivar (OFF)?: ");
@@ -168,6 +228,9 @@ public class Cliente {
                     Trama tr = Trama.decodificar(paqueteRespuesta.getData(), paqueteRespuesta.getLength());
                     RespuestaControl respuesta = JsonSerializador.deserializarRespuesta(tr.getCuerpo());
                     System.out.println("[RESPUESTA] " + respuesta);
+                    if (respuesta.isOk() && operacion.equals("FORMATO")) {
+                        formatos.put(idServidor, parametro.trim().toUpperCase());
+                    }
                     Archivos.anadir("Servidor" + idServidor, "respuestas.txt", tr.getCuerpo() + System.lineSeparator());
 
                 } catch (Exception e) {

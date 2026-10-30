@@ -4,12 +4,18 @@ import java.net.BindException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Servidor {
 
     private static volatile long periodoMs = 5000;
     private static volatile boolean activo = true;
+    public static volatile String formato; // XML o JSON
+    private static final Map<String, String> unidadesBase = new ConcurrentHashMap<>();
+    private static final Map<String, String> unidadesActuales = new ConcurrentHashMap<>();
     private static Thread hiloBroadcast;
     private static final Random RND = new Random();
 
@@ -17,21 +23,28 @@ public class Servidor {
         return Math.round((min + RND.nextDouble() * (max - min)) * 100.0) / 100.0;
     }
 
+    private static Medicion medir(String nombre, String unidadBase, double min, double max) {
+        unidadesBase.putIfAbsent(nombre, unidadBase); //asi el servidor sabe que variables tiene
+        String unidad = unidadesActuales.getOrDefault(nombre, unidadBase);
+        double valor = Unidades.convertir(aleatorio(min, max), unidadBase, unidad);
+        return new Medicion(nombre, unidad, Math.round(valor * 100.0) / 100.0);
+    }
+
     private static MensajeDistribucion generarMensaje(int id) {
         MensajeDistribucion m = new MensajeDistribucion(id, System.currentTimeMillis());
-        m.addMedicion(new Medicion("Temp", "C", aleatorio(-5, 40)));
+        m.addMedicion(medir("Temp", "C", -5, 40));
         switch (id) {
             case 1:
-                m.addMedicion(new Medicion("Hum", "%", aleatorio(10, 100)));
-                m.addMedicion(new Medicion("PM10", "ug/m3", aleatorio(0, 150)));
+                m.addMedicion(medir("Hum", "%", 10, 100));
+                m.addMedicion(medir("PM10", "ug/m3", 0, 150));
                 break;
             case 2:
-                m.addMedicion(new Medicion("SO2", "ug/m3", aleatorio(0, 350)));
-                m.addMedicion(new Medicion("NO2", "ug/m3", aleatorio(0, 200)));
+                m.addMedicion(medir("SO2", "ug/m3", 0, 350));
+                m.addMedicion(medir("NO2", "ug/m3", 0, 200));
                 break;
             default:
-                m.addMedicion(new Medicion("O3", "ug/m3", aleatorio(0, 240)));
-                m.addMedicion(new Medicion("Presion", "hPa", aleatorio(980, 1040)));
+                m.addMedicion(medir("O3", "ug/m3", 0, 240));
+                m.addMedicion(medir("Presion", "hPa", 980, 1040));
         }
         return m;
     }
@@ -86,9 +99,43 @@ public class Servidor {
                     return new RespuestaControl(id, false, "La frecuencia debe ser un numero (segundos)");
                 }
 
+            case "FORMATO":
+                    String nuevo = p.toUpperCase();
+                    if (!nuevo.equals("XML") && !nuevo.equals("JSON")) {
+                        return new RespuestaControl(id, false, "Formato no valido: usa XML o JSON");
+                    }
+                    formato = nuevo;
+                    hiloBroadcast.interrupt(); // siguiente trama sale en el nuevo formato
+                    return new RespuestaControl(id, true, "Formato de distribucion: " + nuevo);
+
+            case "UNIDADES":
+                String[] partes = p.split(":", 2);
+                if (partes.length != 2) {
+                    return new RespuestaControl(id, false, "Usa variable:unidad (ej: Temp:F)");
+                }
+                String variable = null;
+                for (String nombre : unidadesBase.keySet()) {
+                    if (nombre.equalsIgnoreCase(partes[0].trim())) {
+                        variable = nombre;
+                    }
+                }
+                if (variable == null) {
+                    return new RespuestaControl(id, false, "Este servidor no tiene la variable "
+                            + partes[0].trim() + " (tiene: " + unidadesBase.keySet() + ")");
+                }
+                String destino = Unidades.normalizar(partes[1]);
+                List<String> validas = Unidades.compatibles(unidadesBase.get(variable));
+                if (destino ==null || !validas.contains(destino)) {
+                    return new RespuestaControl(id, false, "Unidad no valida para " + variable
+                + ". Disponibles: " + validas);
+                }
+                unidadesActuales.put(variable, destino);
+                return new RespuestaControl(id, true, variable + " ahora en " + destino);
+            
             default:
-                return new RespuestaControl(id, false, "Operacion aun no implementada: " + op);
+                return new RespuestaControl(id, false, "Operacion desconocida: " + op);
         }
+
     }
 
     public static void main(String[] args) {
@@ -99,11 +146,13 @@ public class Servidor {
         }
 
         int id = Integer.parseInt(args[0]);
-        final String formato = args[1].toUpperCase();
-        if (!formato.equals("XML") && !formato.equals("JSON")) {
+        String formatoInicial = args[1].toUpperCase();
+        if (!formatoInicial.equals("XML") && !formatoInicial.equals("JSON")) {
             System.out.println("Error: el formato debe ser XML o JSON.");
             return;
         }
+        formato = formatoInicial;
+        generarMensaje(id);
 
         int puertoControl = 6000 + id;
         int puertoBroadcast = 5000;
