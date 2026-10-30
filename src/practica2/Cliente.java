@@ -34,18 +34,23 @@ public class Cliente {
 
                     try {
                         Trama t = Trama.decodificar(paquete.getData(), paquete.getLength());
-                        
-                        if (t.getFormato().equals("JSON")) {
-                        MensajeDistribucion m = JsonSerializador.deserializar(t.getCuerpo());
-                        Archivos.anadir("Servidor" + m.getIdServidor(), "mediciones.txt", t.getCuerpo());
-                        System.out.println("\n[DATOS JSON] " + m);
-                        } else {
-                            System.out.println("\n[DATOS " + t.getFormato() + "] formato aun no soportado");
-                        }
-                    } catch (Exception e) {
-                        System.out.println("[ERROR] Trama no valida " + e.getMessage());
-                    }
 
+                        MensajeDistribucion m;
+                        if (t.getFormato().equals("JSON")) {
+                            m = JsonSerializador.deserializar(t.getCuerpo());
+                        } else if (t.getFormato().equals("XML")) {
+                            m = XmlSerializador.deserializar(t.getCuerpo()); // valida contra el XSD
+                        } else {
+                            System.out.println("\n[DATOS " + t.getFormato() + "] formato no soportado");
+                            continue;
+                        }
+
+                        System.out.println("\n[DATOS " + t.getFormato() + "] " + m);
+                        Archivos.anadir("Servidor" + m.getIdServidor(), "mediciones.txt",
+                                t.getCuerpo().trim() + System.lineSeparator());
+                    } catch (Exception e) {
+                        System.out.println("[ERROR] Trama no valida: " + e.getMessage());
+                    }
 
                 }
             } catch (Exception e) {
@@ -111,28 +116,29 @@ public class Cliente {
                 int accion = scanner.nextInt();
                 scanner.nextLine(); // Limpiar el salto de linea pendiente
 
-                String comandoConstruido = "";
+                String operacion;
+                String parametro;
 
                 switch (accion) {
                     case 1:
                         System.out.print("Introduce el nuevo formato (XML o JSON): ");
-                        String formato = scanner.nextLine();
-                        comandoConstruido = "CAMBIAR_FORMATO:" + formato;
+                        operacion = "FORMATO";
+                        parametro = scanner.nextLine();
                         break;
                     case 2:
                         System.out.print("Introduce la nueva frecuencia en segundos: ");
-                        String freq = scanner.nextLine();
-                        comandoConstruido = "CAMBIAR_FRECUENCIA:" + freq;
+                        operacion = "FRECUENCIA";
+                        parametro = scanner.nextLine();
                         break;
                     case 3:
                         System.out.print("Introduce variable y nuevas unidades (ej: Temp:Fahrenheit): ");
-                        String unidades = scanner.nextLine();
-                        comandoConstruido = "CAMBIAR_UNIDADES:" + unidades;
+                        operacion = "UNIDADES";
+                        parametro = scanner.nextLine();
                         break;
                     case 4:
                         System.out.print("¿Activar (ON) o Desactivar (OFF)?: ");
-                        String estado = scanner.nextLine();
-                        comandoConstruido = "ESTADO_ENVIO:" + estado;
+                        operacion = "ENVIO";
+                        parametro = scanner.nextLine();
                         break;
                     default:
                         System.out.println("[!] Opcion no valida. Cancelando envio.");
@@ -143,7 +149,8 @@ public class Cliente {
                 // ENVIO DE LA ORDEN DE CONTROL POR UNICAST Y ESPERA DE ACK
                 // =========================================================================
                 try (DatagramSocket socketEnvio = new DatagramSocket()) {
-                    byte[] bufferEnvio = comandoConstruido.getBytes();
+                    MensajeControl orden = new MensajeControl(idServidor, operacion, parametro);
+                    byte[] bufferEnvio = new Trama("JSON", "CONTROL", JsonSerializador.serializar(orden)).codificar();
                     InetAddress ipDestino = InetAddress.getByName("127.0.0.1");
 
                     DatagramPacket paqueteControl = new DatagramPacket(bufferEnvio, bufferEnvio.length, ipDestino,
@@ -154,12 +161,14 @@ public class Cliente {
 
                     // Espera de la respuesta exclusiva del servidor (ACK)
                     socketEnvio.setSoTimeout(3000);
-                    byte[] bufferRespuesta = new byte[1024];
+                    byte[] bufferRespuesta = new byte[4096];
                     DatagramPacket paqueteRespuesta = new DatagramPacket(bufferRespuesta, bufferRespuesta.length);
 
                     socketEnvio.receive(paqueteRespuesta);
-                    String respuestaServidor = new String(paqueteRespuesta.getData(), 0, paqueteRespuesta.getLength());
-                    System.out.println("[RESPUESTA] " + respuestaServidor);
+                    Trama tr = Trama.decodificar(paqueteRespuesta.getData(), paqueteRespuesta.getLength());
+                    RespuestaControl respuesta = JsonSerializador.deserializarRespuesta(tr.getCuerpo());
+                    System.out.println("[RESPUESTA] " + respuesta);
+                    Archivos.anadir("Servidor" + idServidor, "respuestas.txt", tr.getCuerpo() + System.lineSeparator());
 
                 } catch (Exception e) {
                     e.printStackTrace();

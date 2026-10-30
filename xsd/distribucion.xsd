@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+  <xs:element name="distribucion">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="idServidor" type="xs:int"/>
+        <xs:element name="timestamp" type="xs:long"/>
+        <xs:element name="mediciones">
+          <xs:complexType>
+            <xs:sequence>
+              <!--  minimo de 3 variables por servidor -->
+              <xs:element name="medicion" minOccurs="3" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:double">
+                      <xs:attribute name="nombre" type="xs:string" use="required"/>
+                      <xs:attribute name="unidad" type="xs:string" use="required"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
