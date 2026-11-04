@@ -169,14 +169,16 @@ public class Servidor {
                     if (activo) {
                         MensajeDistribucion mensaje = generarMensaje(id);
 
+                        String formatoActual = formato;
+
                         String cuerpo;
-                        if (formato.equals("XML")) {
+                        if (formatoActual.equals("XML")) {
                             cuerpo = XmlSerializador.serializar(mensaje);
                         } else {
                             cuerpo = JsonSerializador.serializar(mensaje);
                         }
 
-                        byte[] buffer = new Trama(formato, "DISTRIBUCION", cuerpo).codificar();
+                        byte[] buffer = new Trama(formatoActual, "DISTRIBUCION", cuerpo).codificar();
 
                         InetAddress direccionBroadcast = InetAddress.getByName("255.255.255.255");
 
