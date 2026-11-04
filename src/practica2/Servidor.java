@@ -24,7 +24,7 @@ public class Servidor {
     }
 
     private static Medicion medir(String nombre, String unidadBase, double min, double max) {
-        unidadesBase.putIfAbsent(nombre, unidadBase); //asi el servidor sabe que variables tiene
+        unidadesBase.putIfAbsent(nombre, unidadBase); // asi el servidor sabe que variables tiene
         String unidad = unidadesActuales.getOrDefault(nombre, unidadBase);
         double valor = Unidades.convertir(aleatorio(min, max), unidadBase, unidad);
         return new Medicion(nombre, unidad, Math.round(valor * 100.0) / 100.0);
@@ -100,13 +100,13 @@ public class Servidor {
                 }
 
             case "FORMATO":
-                    String nuevo = p.toUpperCase();
-                    if (!nuevo.equals("XML") && !nuevo.equals("JSON")) {
-                        return new RespuestaControl(id, false, "Formato no valido: usa XML o JSON");
-                    }
-                    formato = nuevo;
-                    hiloBroadcast.interrupt(); // siguiente trama sale en el nuevo formato
-                    return new RespuestaControl(id, true, "Formato de distribucion: " + nuevo);
+                String nuevo = p.toUpperCase();
+                if (!nuevo.equals("XML") && !nuevo.equals("JSON")) {
+                    return new RespuestaControl(id, false, "Formato no valido: usa XML o JSON");
+                }
+                formato = nuevo;
+                hiloBroadcast.interrupt(); // siguiente trama sale en el nuevo formato
+                return new RespuestaControl(id, true, "Formato de distribucion: " + nuevo);
 
             case "UNIDADES":
                 String[] partes = p.split(":", 2);
@@ -125,13 +125,13 @@ public class Servidor {
                 }
                 String destino = Unidades.normalizar(partes[1]);
                 List<String> validas = Unidades.compatibles(unidadesBase.get(variable));
-                if (destino ==null || !validas.contains(destino)) {
+                if (destino == null || !validas.contains(destino)) {
                     return new RespuestaControl(id, false, "Unidad no valida para " + variable
-                + ". Disponibles: " + validas);
+                            + ". Disponibles: " + validas);
                 }
                 unidadesActuales.put(variable, destino);
                 return new RespuestaControl(id, true, variable + " ahora en " + destino);
-            
+
             default:
                 return new RespuestaControl(id, false, "Operacion desconocida: " + op);
         }
