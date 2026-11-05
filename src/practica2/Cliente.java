@@ -210,7 +210,11 @@ public class Cliente {
                 // =========================================================================
                 try (DatagramSocket socketEnvio = new DatagramSocket()) {
                     MensajeControl orden = new MensajeControl(idServidor, operacion, parametro);
-                    byte[] bufferEnvio = new Trama("JSON", "CONTROL", JsonSerializador.serializar(orden)).codificar();
+                    // La orden se codifica en el formato en que el servidor esta enviando sus datos
+                    String formatoOrden = formatos.getOrDefault(idServidor, "JSON");
+                    String cuerpoOrden = formatoOrden.equals("XML") ? XmlSerializador.serializar(orden)
+                            : JsonSerializador.serializar(orden);
+                    byte[] bufferEnvio = new Trama(formatoOrden, "CONTROL", cuerpoOrden).codificar();
                     InetAddress ipDestino = InetAddress.getByName("127.0.0.1");
 
                     DatagramPacket paqueteControl = new DatagramPacket(bufferEnvio, bufferEnvio.length, ipDestino,
@@ -226,12 +230,14 @@ public class Cliente {
 
                     socketEnvio.receive(paqueteRespuesta);
                     Trama tr = Trama.decodificar(paqueteRespuesta.getData(), paqueteRespuesta.getLength());
-                    RespuestaControl respuesta = JsonSerializador.deserializarRespuesta(tr.getCuerpo());
-                    System.out.println("[RESPUESTA] " + respuesta);
+                    RespuestaControl respuesta = tr.getFormato().equals("XML")
+                            ? XmlSerializador.deserializarRespuesta(tr.getCuerpo()) // valida contra respuesta.xsd
+                            : JsonSerializador.deserializarRespuesta(tr.getCuerpo());
+                                        System.out.println("[RESPUESTA] " + respuesta);
                     if (respuesta.isOk() && operacion.equals("FORMATO")) {
                         formatos.put(idServidor, parametro.trim().toUpperCase());
                     }
-                    Archivos.anadir("Servidor" + idServidor, "respuestas.txt", tr.getCuerpo() + System.lineSeparator());
+                    Archivos.anadir("Servidor" + idServidor, "respuestas.txt", tr.getCuerpo().trim());
 
                 } catch (Exception e) {
                     e.printStackTrace();

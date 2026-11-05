@@ -14,8 +14,9 @@ public class Archivos {
         try {
             Path dir = Paths.get("datos", carpeta);
             Files.createDirectories(dir);
-            byte[] bytes = (contenido + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
-            Files.write(dir.resolve(nombre), bytes,
+            byte[] bytes = (contenido.trim() + System.lineSeparator() + System.lineSeparator())
+                    .getBytes(StandardCharsets.UTF_8);
+           Files.write(dir.resolve(nombre), bytes,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             System.out.println("[ERROR] No se pudo guardar el archivo: " + e.getMessage());

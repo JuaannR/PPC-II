@@ -51,22 +51,34 @@ public class Servidor {
 
     private static byte[] procesarControl(int id, DatagramPacket paquete) {
         RespuestaControl r;
+        // La respuesta sale en el mismo formato en que llego la orden (JSON si no se sabe)
+        String formatoRespuesta = "JSON";
         try {
             Trama t = Trama.decodificar(paquete.getData(), paquete.getLength());
+            if (t.getFormato().equals("XML") || t.getFormato().equals("JSON")) {
+                formatoRespuesta = t.getFormato();
+            }
+            Archivos.anadir("Servidor" + id, "control_recibido.txt", t.getCuerpo().trim());
             if (!t.getTipo().equals("CONTROL")) {
                 r = new RespuestaControl(id, false, "Tipo de trama no esperado: " + t.getTipo());
-            } else if (!t.getFormato().equals("JSON")) {
-                r = new RespuestaControl(id, false, "Formato de control no soportado todavia: " + t.getFormato());
+            } else if (!formatoRespuesta.equals(t.getFormato())) {
+                r = new RespuestaControl(id, false, "Formato de control no soportado: " + t.getFormato());
             } else {
-                MensajeControl c = JsonSerializador.deserializarControl(t.getCuerpo());
-                Archivos.anadir("Servidor" + id, "control_recibido.txt", t.getCuerpo() + System.lineSeparator());
-                System.out.println("-> Orden: " + c);
+                MensajeControl c;
+                if (t.getFormato().equals("XML")) {
+                    c = XmlSerializador.deserializarControl(t.getCuerpo()); // valida contra control.xsd
+                } else {
+                    c = JsonSerializador.deserializarControl(t.getCuerpo());
+                }
+                System.out.println("-> Orden (" + t.getFormato() + "): " + c);
                 r = aplicarOrden(id, c);
             }
         } catch (Exception e) {
             r = new RespuestaControl(id, false, "Trama de control no valida: " + e.getMessage());
         }
-        return new Trama("JSON", "RESPUESTA", JsonSerializador.serializar(r)).codificar();
+        String cuerpo = formatoRespuesta.equals("XML") ? XmlSerializador.serializar(r)
+                : JsonSerializador.serializar(r);
+        return new Trama(formatoRespuesta, "RESPUESTA", cuerpo).codificar();
     }
 
     private static RespuestaControl aplicarOrden(int id, MensajeControl c) {
