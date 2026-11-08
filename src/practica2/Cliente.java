@@ -157,43 +157,44 @@ public class Cliente {
                         break;
                     case 3:
                         MensajeDistribucion ultimoMensaje = ultimo.get(idServidor);
-                            if (ultimoMensaje == null) {
-                                System.out.println("[AVISO] Aun no se han recibido datos del servidor " + idServidor
-                                        + ". Espera a que llegue alguna trama.");
-                                continue;
-                            }
-                            List<Medicion> meds = ultimoMensaje.getMediciones();
-                            System.out.println("Variables del servidor " + idServidor + ":");
-                            for (int i = 0; i < meds.size(); i++) {
-                                System.out.println("  " + (i + 1) + ". " + meds.get(i).getNombre()
-                                        + " (" + meds.get(i).getUnidad() + ")");
-                            }
-                            System.out.print("Elige variable: ");
-                            int v = leerOpcion(scanner);
-                            if (v < 1 || v > meds.size()) {
-                                System.out.println("[!] Variable no valida. Cancelando.");
-                                continue;
-                            }
-                            Medicion elegida = meds.get(v - 1);
+                        if (ultimoMensaje == null) {
+                            System.out.println("[AVISO] Aun no se han recibido datos del servidor " + idServidor
+                                    + ". Espera a que llegue alguna trama.");
+                            continue;
+                        }
+                        List<Medicion> meds = ultimoMensaje.getMediciones();
+                        System.out.println("Variables del servidor " + idServidor + ":");
+                        for (int i = 0; i < meds.size(); i++) {
+                            System.out.println("  " + (i + 1) + ". " + meds.get(i).getNombre()
+                                    + " (" + meds.get(i).getUnidad() + ")");
+                        }
+                        System.out.print("Elige variable: ");
+                        int v = leerOpcion(scanner);
+                        if (v < 1 || v > meds.size()) {
+                            System.out.println("[!] Variable no valida. Cancelando.");
+                            continue;
+                        }
+                        Medicion elegida = meds.get(v - 1);
 
-                            List<String> unidades = Unidades.compatibles(elegida.getUnidad());
-                            if (unidades.size() < 2) {
-                                System.out.println("[AVISO] " + elegida.getNombre() + " solo admite " + elegida.getUnidad() + ".");
-                                continue;
-                            }
-                            System.out.println("Unidades disponibles para " + elegida.getNombre() + ":");
-                            for (int i = 0; i < unidades.size(); i++) {
-                                System.out.println("  " + (i + 1) + ". " + unidades.get(i)
-                                        + (unidades.get(i).equals(elegida.getUnidad()) ? " (actual)" : ""));
-                            }
-                            System.out.print("Elige unidad: ");
-                            int u = leerOpcion(scanner);
-                            if (u < 1 || u > unidades.size()) {
-                                System.out.println("[!] Unidad no valida. Cancelando.");
-                                continue;
-                            }
-                            operacion = "UNIDADES";
-                            parametro = elegida.getNombre() + ":" + unidades.get(u - 1);
+                        List<String> unidades = Unidades.compatibles(elegida.getUnidad());
+                        if (unidades.size() < 2) {
+                            System.out.println(
+                                    "[AVISO] " + elegida.getNombre() + " solo admite " + elegida.getUnidad() + ".");
+                            continue;
+                        }
+                        System.out.println("Unidades disponibles para " + elegida.getNombre() + ":");
+                        for (int i = 0; i < unidades.size(); i++) {
+                            System.out.println("  " + (i + 1) + ". " + unidades.get(i)
+                                    + (unidades.get(i).equals(elegida.getUnidad()) ? " (actual)" : ""));
+                        }
+                        System.out.print("Elige unidad: ");
+                        int u = leerOpcion(scanner);
+                        if (u < 1 || u > unidades.size()) {
+                            System.out.println("[!] Unidad no valida. Cancelando.");
+                            continue;
+                        }
+                        operacion = "UNIDADES";
+                        parametro = elegida.getNombre() + ":" + unidades.get(u - 1);
                         break;
                     case 4:
                         System.out.print("¿Activar (ON) o Desactivar (OFF)?: ");
@@ -233,11 +234,15 @@ public class Cliente {
                     RespuestaControl respuesta = tr.getFormato().equals("XML")
                             ? XmlSerializador.deserializarRespuesta(tr.getCuerpo()) // valida contra respuesta.xsd
                             : JsonSerializador.deserializarRespuesta(tr.getCuerpo());
-                                        System.out.println("[RESPUESTA] " + respuesta);
+                    System.out.println("[RESPUESTA] " + respuesta);
                     if (respuesta.isOk() && operacion.equals("FORMATO")) {
                         formatos.put(idServidor, parametro.trim().toUpperCase());
                     }
                     Archivos.anadir("Servidor" + idServidor, "respuestas.txt", tr.getCuerpo().trim());
+
+                } catch (java.net.SocketTimeoutException e) {
+                    System.out.println("[AVISO] El servidor " + idServidor
+                            + " no ha respondido en 3 s. Puedes repetir la orden.");
 
                 } catch (Exception e) {
                     e.printStackTrace();
